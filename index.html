@@ -1,0 +1,1399 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Premium real estate discovery platform featuring exclusive listings, financial insights, and 3D virtual tours.">
+    <meta property="og:title" content="Luxe Living Portfolio">
+    
+    <title>Luxe Living | Global Real Estate Portfolio</title>
+    
+    <!-- Preconnect to CDNs -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="preconnect" href="https://cdnjs.cloudflare.com">
+    <link rel="preconnect" href="https://unpkg.com">
+    <link rel="preconnect" href="https://cdn.jsdelivr.net">
+
+    <!-- Preload Hero Image -->
+    <link rel="preload" as="image" href="https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?q=80&w=1600&auto=format&fit=crop">
+
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        darkMode: 'class',
+        theme: {
+          extend: {
+            fontFamily: {
+              sans: ['Outfit', 'sans-serif'],
+              serif: ['Playfair Display', 'serif'],
+            }
+          }
+        }
+      }
+    </script>
+    
+    <!-- Font Awesome (Deferred) -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" media="print" onload="this.media='all'">
+    
+    <!-- Leaflet Map (Deferred) -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" media="print" onload="this.media='all'" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" defer></script>
+    
+    <!-- Chart.js (Deferred) -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js" defer></script>
+    
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@200;300;400;500;600;700;800&family=Playfair+Display:ital,wght@0,400;0,600;1,400&display=swap');
+        
+        :root {
+            --glass-border: rgba(255, 255, 255, 0.2);
+            --glass-bg: rgba(255, 255, 255, 0.7);
+            --glass-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.07);
+        }
+
+        .dark {
+            --glass-bg: rgba(15, 23, 42, 0.8);
+            --glass-border: rgba(255, 255, 255, 0.05);
+            --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+        }
+
+        body { font-family: 'Outfit', sans-serif; overflow-x: hidden; }
+        h1, h2, h3, h4 { font-family: 'Playfair Display', serif; }
+        
+        .glass {
+            background: var(--glass-bg);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid var(--glass-border);
+            box-shadow: var(--glass-shadow);
+        }
+
+        .glass-dark {
+            background: rgba(15, 23, 42, 0.6);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #f8fafc; }
+        ::-webkit-scrollbar-thumb { background: #94a3b8; border-radius: 4px; }
+        .dark ::-webkit-scrollbar-track { background: #0f172a; }
+        .dark ::-webkit-scrollbar-thumb { background: #475569; }
+        
+        /* Map Overrides */
+        .leaflet-popup-content-wrapper { border-radius: 16px; padding: 0; overflow: hidden; box-shadow: 0 20px 40px rgba(0,0,0,0.2); }
+        .leaflet-popup-content { margin: 0; width: 260px !important; }
+        
+        /* Animations */
+        @keyframes fadeUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        .animate-fade-up { animation: fadeUp 0.6s ease-out forwards; }
+        
+        .loader {
+            border: 2px solid rgba(59, 130, 246, 0.1);
+            border-left-color: #3b82f6;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin { 100% { transform: rotate(360deg); } }
+
+        /* Mobile Menu */
+        #mobile-menu {
+            transition: transform 0.3s ease-in-out;
+            transform: translateX(100%);
+        }
+        #mobile-menu.active {
+            transform: translateX(0);
+        }
+
+        /* Accessibility: Skip Link */
+        .skip-link {
+            position: absolute;
+            top: -40px;
+            left: 0;
+            background: #0f172a;
+            color: white;
+            padding: 8px;
+            z-index: 100;
+            transition: top 0.3s;
+        }
+        .skip-link:focus { top: 0; }
+
+        .sr-only {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            white-space: nowrap;
+            border: 0;
+        }
+
+        /* Back to top */
+        #back-to-top {
+            transition: all 0.3s ease;
+            opacity: 0;
+            visibility: hidden;
+            transform: translateY(20px);
+        }
+        #back-to-top.visible {
+            opacity: 1;
+            visibility: visible;
+            transform: translateY(0);
+        }
+
+        /* Property Card Hover */
+        .property-card {
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        .property-card:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.15);
+        }
+        .dark .property-card:hover {
+            box-shadow: 0 20px 40px rgba(0,0,0,0.5);
+        }
+        
+        .quick-view-btn {
+            opacity: 0;
+            transform: translateY(10px);
+            transition: all 0.3s ease;
+        }
+        .property-card:hover .quick-view-btn {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+            .modal-content { width: 100%; height: 100%; border-radius: 0; }
+            .comparison-table-wrapper { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+            .quick-view-btn { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 antialiased selection:bg-blue-100 selection:text-blue-900 dark:bg-slate-950 dark:text-slate-200 dark:selection:bg-blue-900 dark:selection:text-blue-100 transition-colors duration-300">
+
+    <a href="#discover" class="skip-link">Skip to main content</a>
+
+    <!-- Toast Notification -->
+    <div id="toast-container" class="fixed bottom-4 right-4 z-[9999] flex flex-col gap-3 pointer-events-none md:bottom-6 md:right-6"></div>
+
+    <!-- Back to Top Button -->
+    <button id="back-to-top" onclick="window.scrollTo({top: 0, behavior: 'smooth'})" class="fixed bottom-6 right-6 md:bottom-10 md:right-10 z-40 bg-slate-900 text-white w-12 h-12 rounded-full shadow-2xl flex items-center justify-center hover:bg-blue-600 transition dark:bg-white dark:text-slate-900" aria-label="Back to top">
+        <i class="fas fa-chevron-up"></i>
+    </button>
+    
+    <!-- Global Chat Widget -->
+    <button id="whatsapp-float" onclick="toggleChat()" class="fixed bottom-6 left-6 md:bottom-10 md:left-10 z-40 bg-green-500 text-white px-6 py-3 rounded-full shadow-2xl flex items-center gap-2 hover:bg-green-600 transition font-bold uppercase tracking-widest text-xs animate-bounce" aria-label="Chat with Agent">
+        <i class="fab fa-whatsapp text-lg"></i> Chat Live
+    </button>
+
+    <!-- Top Navigation -->
+    <nav class="fixed top-0 w-full z-50 glass transition-all duration-300" id="navbar">
+        <div class="container mx-auto px-6 py-4 flex justify-between items-center">
+            <a href="#" class="text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-2 tracking-tight">
+                <div class="bg-slate-900 dark:bg-white dark:text-slate-900 text-white w-10 h-10 rounded-xl flex items-center justify-center"><i class="fas fa-gem"></i></div>
+                <span id="nav-brand">Luxe Living</span>
+            </a>
+            
+            <div class="hidden lg:flex items-center space-x-10 font-medium text-sm text-slate-600 dark:text-slate-300 uppercase tracking-widest">
+                <a href="#discover" class="flex items-center gap-2 hover:text-blue-600 dark:hover:text-blue-400 transition group">
+                    <i class="fas fa-layer-group text-lg opacity-50 group-hover:opacity-100 transition-opacity"></i>
+                    Collection
+                </a>
+                <a href="#map-view" class="flex items-center gap-2 hover:text-blue-600 dark:hover:text-blue-400 transition group">
+                    <i class="fas fa-map-marked-alt text-lg opacity-50 group-hover:opacity-100 transition-opacity"></i>
+                    Map
+                </a>
+                <a href="#market-data" class="flex items-center gap-2 hover:text-blue-600 dark:hover:text-blue-400 transition group relative">
+                    <i class="fas fa-chart-line text-lg opacity-50 group-hover:opacity-100 transition-opacity"></i>
+                    Insights
+                    <span class="absolute -top-1 -right-4 flex h-2 w-2">
+                        <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
+                        <span class="relative inline-flex rounded-full h-2 w-2 bg-blue-500"></span>
+                    </span>
+                </a>
+                <button onclick="toggleSavedDrawer()" class="flex items-center gap-2 hover:text-blue-600 dark:hover:text-blue-400 transition group" aria-label="View Saved Properties">
+                    <span class="relative">
+                        <i class="fas fa-heart text-lg group-hover:animate-pulse opacity-50 group-hover:opacity-100 transition-opacity"></i>
+                        <span id="saved-badge" class="absolute -top-2 -right-2 bg-red-500 text-white text-[10px] w-4 h-4 flex items-center justify-center rounded-full font-bold opacity-0 transition-opacity">0</span>
+                    </span>
+                    Saved
+                </button>
+            </div>
+            
+                        <div class="flex items-center gap-4">
+                <button onclick="toggleDarkMode()" class="w-10 h-10 rounded-full flex items-center justify-center text-slate-600 dark:text-yellow-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition" aria-label="Toggle Dark Mode">
+                    <i class="fas fa-moon dark:hidden"></i>
+                    <i class="fas fa-sun hidden dark:block"></i>
+                </button>
+
+            <div class="flex items-center gap-4">
+                <button onclick="openLeadModal('General Inquiry')" class="hidden md:flex items-center gap-2 bg-slate-900 dark:bg-white dark:text-slate-900 text-white px-6 py-3 rounded-full font-bold text-xs uppercase tracking-widest hover:bg-blue-600 dark:hover:bg-slate-200 transition shadow-xl hover:shadow-blue-600/30">
+                    <i class="fas fa-phone-alt"></i> <span id="nav-agent">Concierge</span>
+                </button>
+                <button id="mobile-menu-btn" class="lg:hidden text-2xl p-3 min-w-[44px] min-h-[44px] text-slate-900 dark:text-white" aria-label="Open Mobile Menu">
+                    <i class="fas fa-bars"></i>
+                </button>
+            </div>
+        </div>
+    </nav>
+    
+    <!-- Mobile Menu Overlay -->
+    <div id="mobile-menu" class="fixed inset-0 bg-white dark:bg-slate-950 z-[60] flex flex-col p-8 lg:hidden">
+        <div class="flex justify-between items-center mb-12">
+            <div class="text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                <div class="bg-slate-900 dark:bg-white dark:text-slate-900 text-white w-10 h-10 rounded-xl flex items-center justify-center"><i class="fas fa-gem"></i></div>
+                <span>Luxe Living</span>
+            </div>
+            <button id="close-mobile-menu" class="text-2xl p-3 min-w-[44px] min-h-[44px] text-slate-900 dark:text-white" aria-label="Close Mobile Menu"><i class="fas fa-times"></i></button>
+        </div>
+        <nav class="flex flex-col gap-8 text-xl font-medium text-slate-900 dark:text-white">
+            <a href="#discover" onclick="closeMobileMenu()" class="hover:text-blue-600 transition border-b border-slate-100 dark:border-slate-800 pb-4">Collection</a>
+            <a href="#map-view" onclick="closeMobileMenu()" class="hover:text-blue-600 transition border-b border-slate-100 dark:border-slate-800 pb-4">Map</a>
+            <a href="#market-data" onclick="closeMobileMenu()" class="hover:text-blue-600 transition border-b border-slate-100 dark:border-slate-800 pb-4">Insights</a>
+            <button onclick="toggleSavedDrawer(); closeMobileMenu()" class="text-left hover:text-blue-600 transition border-b border-slate-100 dark:border-slate-800 pb-4">Saved Items</button>
+        </nav>
+        <div class="mt-auto">
+            <button onclick="openLeadModal('General Inquiry'); closeMobileMenu()" class="w-full bg-slate-900 dark:bg-white dark:text-slate-900 text-white py-4 rounded-xl font-bold uppercase tracking-widest flex items-center justify-center gap-3">
+                <i class="fas fa-phone-alt"></i> Contact Concierge
+            </button>
+        </div>
+    </div>
+
+    <!-- Hero Section -->
+    <header class="relative h-screen min-h-[600px] flex items-center justify-center overflow-hidden">
+        <div class="absolute inset-0 z-0">
+            <!-- Hero Image -->
+            <img src="https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?q=80&w=1600&auto=format&fit=crop" class="w-full h-full object-cover scale-105" alt="Luxury Real Estate Hero" fetchpriority="high">
+            <div class="absolute inset-0 bg-gradient-to-b from-slate-900/60 via-slate-900/40 to-slate-900/90"></div>
+        </div>
+
+        <div class="relative z-10 container mx-auto px-6 pt-20">
+            <div class="max-w-5xl mx-auto text-center text-white animate-fade-up">
+                <div class="inline-flex items-center gap-2 bg-white/10 backdrop-blur-md border border-white/20 px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-widest mb-6">
+                    <span class="w-2 h-2 rounded-full bg-green-400 animate-pulse"></span> Live Market Data
+                </div>
+                <h1 class="text-4xl md:text-8xl font-medium mb-8 leading-tight">
+                    Architectural <span class="italic text-blue-200">Masterpieces</span> <br/> for the Elite
+                </h1>
+                
+                <!-- Advanced Search Component -->
+                <div class="bg-white dark:bg-slate-900 p-2 rounded-[2rem] shadow-2xl max-w-4xl mx-auto flex flex-col md:flex-row gap-2 mt-12 transition-colors">
+                    <div class="flex-1 relative group">
+                        <div class="absolute left-6 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-600 transition"><i class="fas fa-search"></i></div>
+                        <input type="text" id="search-input" placeholder="Search listing, location, or ID..." class="w-full h-16 pl-14 pr-6 rounded-[1.5rem] bg-slate-50 dark:bg-slate-800 border-2 border-transparent focus:bg-white dark:focus:bg-slate-950 focus:border-blue-100 dark:focus:border-blue-900 outline-none transition text-slate-700 dark:text-slate-200 font-medium" aria-label="Search listings">
+                    </div>
+                    
+                    <div class="flex-1 md:w-1/4 relative border-l border-slate-100 dark:border-slate-800 md:border-none">
+                        <select id="hero-loc" class="w-full h-16 pl-6 pr-10 rounded-[1.5rem] bg-slate-50 dark:bg-slate-800 dark:text-slate-200 md:bg-white md:dark:bg-slate-900 appearance-none outline-none font-medium text-slate-700 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 transition" aria-label="Select Location">
+                            <option value="">All Locations</option>
+                            <option value="South Mumbai">South Mumbai</option>
+                            <option value="Bandra West">Bandra West</option>
+                            <option value="Worli">Worli Sea Face</option>
+                            <option value="Khandala">Khandala Hills</option>
+                        </select>
+                        <div class="absolute right-6 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"><i class="fas fa-chevron-down text-xs"></i></div>
+                    </div>
+
+                    <button onclick="handleSearch()" class="bg-blue-600 text-white h-16 px-10 rounded-[1.5rem] font-bold text-sm uppercase tracking-widest hover:bg-slate-900 dark:hover:bg-white dark:hover:text-slate-900 transition shadow-lg shadow-blue-600/30 flex items-center justify-center gap-2 min-w-[150px]">
+                        Explore <i class="fas fa-arrow-right"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <a href="#discover" class="absolute bottom-10 left-1/2 -translate-x-1/2 text-white/50 hover:text-white transition animate-bounce p-4" aria-label="Scroll down">
+            <i class="fas fa-chevron-down text-2xl"></i>
+        </a>
+    </header>
+    
+    <!-- Property Categories -->
+    <section id="categories" class="py-20 bg-white dark:bg-slate-950 transition-colors">
+        <div class="container mx-auto px-6">
+            <div class="grid grid-cols-2 lg:grid-cols-4 gap-6">
+                <div onclick="filterByCategory('Apartment')" class="group p-8 rounded-[2.5rem] border border-slate-100 dark:border-slate-800 hover:border-blue-500 dark:hover:border-blue-500 transition-all duration-500 text-center cursor-pointer bg-slate-50/50 dark:bg-slate-900/50 hover:bg-white dark:hover:bg-slate-900 shadow-sm hover:shadow-2xl">
+                    <div class="w-20 h-20 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 rounded-3xl flex items-center justify-center text-4xl mx-auto mb-6 group-hover:scale-110 group-hover:rotate-3 transition-transform duration-500">
+                        <i class="fas fa-building"></i>
+                    </div>
+                    <h3 class="font-bold text-xl text-slate-900 dark:text-white">Apartment</h3>
+                    <p class="text-xs text-slate-400 mt-2 font-medium uppercase tracking-widest">120+ Listings</p>
+                </div>
+                <div onclick="filterByCategory('Villa')" class="group p-8 rounded-[2.5rem] border border-slate-100 dark:border-slate-800 hover:border-blue-500 dark:hover:border-blue-500 transition-all duration-500 text-center cursor-pointer bg-slate-50/50 dark:bg-slate-900/50 hover:bg-white dark:hover:bg-slate-900 shadow-sm hover:shadow-2xl">
+                    <div class="w-20 h-20 bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400 rounded-3xl flex items-center justify-center text-4xl mx-auto mb-6 group-hover:scale-110 group-hover:-rotate-3 transition-transform duration-500">
+                        <i class="fas fa-house-chimney"></i>
+                    </div>
+                    <h3 class="font-bold text-xl text-slate-900 dark:text-white">Villa</h3>
+                    <p class="text-xs text-slate-400 mt-2 font-medium uppercase tracking-widest">85+ Listings</p>
+                </div>
+                <div onclick="filterByCategory('Plots')" class="group p-8 rounded-[2.5rem] border border-slate-100 dark:border-slate-800 hover:border-blue-500 dark:hover:border-blue-500 transition-all duration-500 text-center cursor-pointer bg-slate-50/50 dark:bg-slate-900/50 hover:bg-white dark:hover:bg-slate-900 shadow-sm hover:shadow-2xl">
+                    <div class="w-20 h-20 bg-purple-50 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400 rounded-3xl flex items-center justify-center text-4xl mx-auto mb-6 group-hover:scale-110 group-hover:rotate-3 transition-transform duration-500">
+                        <i class="fas fa-map"></i>
+                    </div>
+                    <h3 class="font-bold text-xl text-slate-900 dark:text-white">Plots</h3>
+                    <p class="text-xs text-slate-400 mt-2 font-medium uppercase tracking-widest">40+ Listings</p>
+                </div>
+                <div onclick="filterByCategory('Commercial')" class="group p-8 rounded-[2.5rem] border border-slate-100 dark:border-slate-800 hover:border-blue-500 dark:hover:border-blue-500 transition-all duration-500 text-center cursor-pointer bg-slate-50/50 dark:bg-slate-900/50 hover:bg-white dark:hover:bg-slate-900 shadow-sm hover:shadow-2xl">
+                    <div class="w-20 h-20 bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400 rounded-3xl flex items-center justify-center text-4xl mx-auto mb-6 group-hover:scale-110 group-hover:-rotate-3 transition-transform duration-500">
+                        <i class="fas fa-city"></i>
+                    </div>
+                    <h3 class="font-bold text-xl text-slate-900 dark:text-white">Commercial</h3>
+                    <p class="text-xs text-slate-400 mt-2 font-medium uppercase tracking-widest">65+ Listings</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Main Content -->
+    <main class="container mx-auto px-6 py-20" id="discover">
+        <div class="text-center mb-16">
+            <div class="text-blue-600 dark:text-blue-400 font-bold text-xs uppercase tracking-[0.3em] mb-4">Featured Properties</div>
+            <h2 class="text-4xl md:text-6xl font-serif font-medium dark:text-white">Explore Exclusive Collections</h2>
+        </div>
+        
+        <!-- Controls Bar -->
+        <div class="sticky top-20 md:top-24 z-30 mb-10">
+            <div class="glass p-4 rounded-2xl flex flex-col md:flex-row justify-between items-center gap-4 transition-all" id="filter-bar">
+                <div class="flex gap-2 overflow-x-auto w-full md:w-auto pb-2 md:pb-0 no-scrollbar" role="tablist">
+                    <button class="filter-btn active bg-slate-900 text-white dark:bg-white dark:text-slate-900 px-5 py-2 rounded-full text-xs font-bold uppercase tracking-widest whitespace-nowrap min-h-[40px]" data-filter="all" role="tab" aria-selected="true">All Assets</button>
+                    <button class="filter-btn bg-white hover:bg-slate-100 text-slate-600 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 dark:border-slate-700 px-5 py-2 rounded-full text-xs font-bold uppercase tracking-widest whitespace-nowrap border border-slate-200 min-h-[40px]" data-filter="Villa" role="tab" aria-selected="false">Villas</button>
+                    <button class="filter-btn bg-white hover:bg-slate-100 text-slate-600 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 dark:border-slate-700 px-5 py-2 rounded-full text-xs font-bold uppercase tracking-widest whitespace-nowrap border border-slate-200 min-h-[40px]" data-filter="Penthouse" role="tab" aria-selected="false">Penthouses</button>
+                    <button class="filter-btn bg-white hover:bg-slate-100 text-slate-600 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 dark:border-slate-700 px-5 py-2 rounded-full text-xs font-bold uppercase tracking-widest whitespace-nowrap border border-slate-200 min-h-[40px]" data-filter="Apartment" role="tab" aria-selected="false">Residences</button>
+                </div>
+                
+                <div class="flex gap-3 w-full md:w-auto">
+                    <select id="price-sort" class="bg-white dark:bg-slate-900 dark:text-slate-200 dark:border-slate-700 border border-slate-200 text-slate-700 text-sm font-bold rounded-xl px-4 py-2 outline-none cursor-pointer focus:ring-2 focus:ring-blue-500 flex-1 md:flex-none min-h-[44px]" aria-label="Sort by Price">
+                        <option value="default">Sort: Default</option>
+                        <option value="asc">Price: Low to High</option>
+                        <option value="desc">Price: High to Low</option>
+                    </select>
+                    <button onclick="toggleLayout()" class="bg-white dark:bg-slate-900 dark:text-slate-200 dark:border-slate-700 border border-slate-200 w-11 h-11 rounded-xl flex items-center justify-center text-slate-600 hover:text-blue-600" aria-label="Toggle Map View"><i class="fas fa-map"></i></button>
+                </div>
+            </div>
+        </div>
+
+        <div class="flex flex-col lg:flex-row gap-8 relative">
+            
+            <!-- Property Grid -->
+            <div class="lg:w-3/5 w-full transition-all duration-500" id="grid-container">
+                <div id="property-list" class="grid grid-cols-1 sm:grid-cols-2 gap-8">
+                    <!-- Skeleton UI loaded here via JS -->
+                </div>
+                <!-- Empty State -->
+                <div id="empty-state" class="hidden text-center py-20 border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-[2rem]">
+                    <div class="text-6xl text-slate-200 dark:text-slate-700 mb-4"><i class="fas fa-search-location"></i></div>
+                    <h3 class="text-xl font-bold text-slate-400">No properties match your criteria.</h3>
+                    <button onclick="resetApp()" class="mt-4 text-blue-600 font-bold hover:underline p-2">Reset Filters</button>
+                </div>
+            </div>
+
+            <!-- Map View (Sticky) -->
+            <div class="lg:w-2/5 hidden lg:block" id="map-view">
+                <div class="sticky top-40 h-[80vh] rounded-[2rem] overflow-hidden shadow-2xl border border-slate-200 dark:border-slate-700 relative">
+                    <div id="map" class="w-full h-full z-0"></div>
+                    <div class="absolute bottom-6 left-6 z-[400] bg-white dark:bg-slate-900 px-4 py-2 rounded-lg shadow-lg text-xs font-bold text-slate-600 dark:text-slate-300">
+                        <i class="fas fa-mouse-pointer mr-1"></i> Interactive Map
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+       <!-- Market Insights Section -->
+    <section id="market-data" class="py-24 bg-slate-950 text-white relative overflow-hidden transition-colors">
+        <div class="absolute inset-0 z-0 opacity-20">
+            <div class="absolute top-0 left-0 w-full h-full bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-blue-900/20 via-transparent to-transparent"></div>
+        </div>
+        
+        <div class="container mx-auto px-6 relative z-10">
+            <dv class="flex flex-col md:flex-row justify-between items-end mb-16 gap-6">
+                <div>
+                    <div class="inline-flex items-center gap-2 bg-blue-500/10 border border-blue-500/20 px-4 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-widest text-blue-400 mb-6">
+                        <span class="w-2 h-2 rounded-full bg-blue-400 animate-pulse"></span> Live Intelligence
+                    </div>
+                    <h2 class="text-4xl md:text-6xl font-serif font-medium leading-tight">Data-Driven <br/><span class="text-blue-400 italic">Investment Insights</span></h2>
+                </div>
+                <button onclick="downloadBrochure()" class="group flex items-center gap-3 bg-white/5 hover:bg-white/10 border border-white/10 px-8 py-4 rounded-2xl transition-all duration-300">
+                    <span class="text-sm font-bold uppercase tracking-widest">Download Q1 2026 Report</span>
+                    <i class="fas fa-download text-blue-400 group-hover:translate-y-1 transition-transform"></i>
+                </button>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                <!-- Insight Card 1 -->
+                <div class="bg-white/5 backdrop-blur-xl border border-white/10 p-10 rounded-[3rem] hover:bg-white/10 transition-all duration-500 group">
+                    <div class="flex justify-between items-start mb-10">
+                        <div class="w-16 h-16 bg-blue-500/20 text-blue-400 rounded-2xl flex items-center justify-center text-3xl group-hover:scale-110 transition-transform">
+                            <i class="fas fa-chart-line"></i>
+                        </div>
+                        <div class="text-right">
+                            <div class="text-green-400 font-bold text-sm">+12.8%</div>
+                            <div class="text-[10px] text-slate-500 uppercase font-bold tracking-widest">Growth</div>
+                        </div>
+                    </div>
+                    <div class="text-5xl font-bold mb-4 tracking-tighter">₹48k<span class="text-lg text-slate-500 font-normal">/sqft</span></div>
+                    <h3 class="text-xl font-bold mb-4">Capital Appreciation</h3>
+                    <p class="text-slate-400 text-sm leading-relaxed">Average price increase in South Mumbai luxury segment over the last 12 months, outperforming traditional indices.</p>
+                </div>
+
+                <!-- Insight Card 2 -->
+                <div class="bg-white/5 backdrop-blur-xl border border-white/10 p-10 rounded-[3rem] hover:bg-white/10 transition-all duration-500 group">
+                    <div class="flex justify-between items-start mb-10">
+                        <div class="w-16 h-16 bg-purple-500/20 text-purple-400 rounded-2xl flex items-center justify-center text-3xl group-hover:scale-110 transition-transform">
+                            <i class="fas fa-building-circle-check"></i>
+                        </div>
+                        <div class="text-right">
+                            <div class="text-blue-400 font-bold text-sm">Peak</div>
+                            <div class="text-[10px] text-slate-500 uppercase font-bold tracking-widest">Demand</div>
+                        </div>
+                    </div>
+                    <div class="text-5xl font-bold mb-4 tracking-tighter">96%</div>
+                    <h3 class="text-xl font-bold mb-4">Rental Occupancy</h3>
+                    <p class="text-slate-400 text-sm leading-relaxed">High-end residences in Bandra & Worli maintain near-perfect occupancy with premium corporate lease renewals.</p>
+                </div>
+
+                <!-- Insight Card 3 -->
+                <div class="bg-white/5 backdrop-blur-xl border border-white/10 p-10 rounded-[3rem] hover:bg-white/10 transition-all duration-500 group">
+                    <div class="flex justify-between items-start mb-10">
+                        <div class="w-16 h-16 bg-emerald-500/20 text-emerald-400 rounded-2xl flex items-center justify-center text-3xl group-hover:scale-110 transition-transform">
+                            <i class="fas fa-coins"></i>
+                        </div>
+                        <div class="text-right">
+                            <div class="text-emerald-400 font-bold text-sm">5.2%</div>
+                            <div class="text-[10px] text-slate-500 uppercase font-bold tracking-widest">Net Yield</div>
+                        </div>
+                    </div>
+                    <div class="text-5xl font-bold mb-4 tracking-tighter">High<span class="text-lg text-slate-500 font-normal"> ROI</span></div>
+                    <h3 class="text-xl font-bold mb-4">Investment Yield</h3>
+                    <p class="text-slate-400 text-sm leading-relaxed">Consistent year-on-year gross rental yield for furnished luxury assets, providing steady cash flow for HNIs.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+    <!-- Comparison Drawer -->
+    <div id="compare-drawer" class="fixed bottom-0 left-0 w-full bg-white dark:bg-slate-900 shadow-[0_-10px_40px_rgba(0,0,0,0.1)] z-[80] transform translate-y-full transition-transform duration-500 border-t border-slate-100 dark:border-slate-800">
+        <div class="container mx-auto px-6 py-6 flex flex-col md:flex-row justify-between items-center gap-6">
+            <div class="flex items-center gap-8 w-full md:w-auto">
+                <div>
+                    <div class="text-sm font-bold text-slate-400 uppercase tracking-widest mb-1">Compare Mode</div>
+                    <div class="font-bold text-xl text-slate-900 dark:text-white"><span id="compare-count">0</span> Selected</div>
+                </div>
+                <div id="compare-thumbs" class="flex -space-x-4"></div>
+            </div>
+            <div class="flex gap-4 w-full md:w-auto">
+                <button onclick="clearCompare()" class="flex-1 md:flex-none text-slate-500 hover:text-red-500 font-bold text-sm min-h-[44px] px-4">Clear All</button>
+                <button onclick="openCompareModal()" class="flex-2 md:flex-none bg-slate-900 dark:bg-white dark:text-slate-900 text-white px-8 py-3 rounded-xl font-bold hover:bg-blue-600 transition shadow-lg min-h-[44px]">Compare Analysis</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Saved Items Sidebar -->
+    <div id="saved-drawer" class="fixed right-0 top-0 h-full w-full md:w-[450px] bg-white dark:bg-slate-900 shadow-2xl z-[100] transform translate-x-full transition-transform duration-300 flex flex-col border-l border-slate-100 dark:border-slate-800" role="complementary" aria-label="Saved Collection">
+        <div class="p-8 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50/50 dark:bg-slate-950/50">
+            <h3 class="font-bold text-xl font-serif dark:text-white">Saved Collection</h3>
+            <button onclick="toggleSavedDrawer()" class="w-11 h-11 rounded-full hover:bg-slate-200 dark:hover:bg-slate-800 dark:text-white flex items-center justify-center transition" aria-label="Close Saved Items"><i class="fas fa-times"></i></button>
+        </div>
+        <div id="saved-list" class="flex-1 overflow-y-auto p-8 space-y-6"></div>
+        <div class="p-8 border-t border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-950">
+            <button onclick="openLeadModal('Bulk Inquiry')" class="w-full bg-blue-600 text-white py-4 rounded-xl font-bold shadow-lg hover:bg-blue-700 transition min-h-[50px]">Inquire About All</button>
+        </div>
+    </div>
+
+    <!-- Details Modal -->
+    <div id="detail-modal" class="fixed inset-0 z-[100] bg-slate-900/95 backdrop-blur-sm hidden overflow-y-auto opacity-0 transition-opacity duration-300" role="dialog" aria-modal="true" aria-labelledby="dm-title">
+        <div class="min-h-screen p-0 md:p-10 flex items-center justify-center">
+            <div class="bg-white dark:bg-slate-900 w-full max-w-7xl md:rounded-[2.5rem] overflow-hidden shadow-2xl relative animate-fade-up modal-content">
+                <button onclick="closeModal('detail-modal')" class="absolute top-6 right-6 z-50 bg-white/80 dark:bg-slate-900/80 backdrop-blur p-4 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition shadow-lg min-w-[44px] min-h-[44px] dark:text-white" aria-label="Close details"><i class="fas fa-times text-xl"></i></button>
+                
+                <div class="flex flex-col lg:flex-row h-full">
+                    <!-- Visuals -->
+                    <div class="lg:w-[60%] bg-slate-100 dark:bg-slate-950 relative min-h-[400px] lg:h-auto">
+                        <div id="modal-gallery" class="w-full h-full flex overflow-x-auto snap-x snap-mandatory no-scrollbar scroll-smooth"></div>
+                        <div id="virtual-tour-overlay" class="hidden absolute inset-0 bg-black z-20 flex items-center justify-center">
+                            <div class="text-white text-center p-6">
+                                <div class="text-6xl mb-4 animate-pulse"><i class="fas fa-cube"></i></div>
+                                <p class="mb-4">Interact with 3D Digital Twin</p>
+                                <button onclick="toggleVirtualTour()" class="border border-white px-6 py-2 rounded-lg hover:bg-white hover:text-black transition min-h-[44px]">Exit 3D View</button>
+                            </div>
+                        </div>
+                        <div class="absolute bottom-8 left-8 right-8 flex flex-wrap gap-3 z-10">
+                            <button onclick="toggleVirtualTour()" class="flex-1 md:flex-none bg-white/90 backdrop-blur px-6 py-3 rounded-full font-bold text-sm shadow-lg hover:bg-blue-600 hover:text-white transition flex items-center justify-center gap-2 min-h-[44px]">
+                                <i class="fas fa-cube"></i> 3D Tour
+                            </button>
+                            <button onclick="shareProperty()" class="bg-white/90 backdrop-blur px-6 py-3 rounded-full font-bold text-sm shadow-lg hover:bg-blue-600 hover:text-white transition flex items-center justify-center gap-2 min-h-[44px]">
+                                <i class="fas fa-share-alt"></i> Share
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Info -->
+                    <div class="lg:w-[40%] p-8 lg:p-14 overflow-y-auto max-h-screen custom-scrollbar bg-white dark:bg-slate-900 dark:text-slate-200">
+                        <div class="mb-8">
+                            <div class="flex justify-between items-start">
+                                <div>
+                                    <span id="dm-status" class="bg-green-100 text-green-700 px-3 py-1 rounded-md text-xs font-bold uppercase tracking-widest mb-4 inline-block">Available</span>
+                                    <h2 id="dm-title" class="text-3xl md:text-4xl font-medium mb-2 leading-tight"></h2>
+                                    <div id="dm-loc" class="text-slate-500 dark:text-slate-400 font-medium"></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Agent Profile -->
+                        <div class="bg-slate-50 dark:bg-slate-800 p-4 rounded-2xl flex items-center gap-4 mb-8 border border-slate-100 dark:border-slate-700">
+                            <img src="https://images.unsplash.com/photo-1560250097-0b93528c311a?w=150" class="w-14 h-14 rounded-full object-cover border-2 border-white dark:border-slate-600" loading="lazy">
+                            <div class="flex-1">
+                                <div class="font-bold text-sm dark:text-white">Sarah Jenkins</div>
+                                <div class="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wider">Senior Consultant</div>
+                            </div>
+                            <button onclick="openLeadModal('Agent Inquiry')" class="bg-blue-600 text-white w-10 h-10 rounded-full flex items-center justify-center shadow-lg hover:bg-blue-700 transition"><i class="fas fa-comment-dots"></i></button>
+                        </div>
+
+                        <div class="grid grid-cols-3 gap-2 py-8 border-y border-slate-100 dark:border-slate-800 mb-8 text-center">
+                            <div><div class="text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-1">Beds</div><div class="text-xl md:text-2xl font-medium" id="dm-beds">0</div></div>
+                            <div class="border-l border-slate-100 dark:border-slate-800"><div class="text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-1">Area</div><div class="text-xl md:text-2xl font-medium"><span id="dm-area">0</span> <span class="text-sm text-slate-400">sqft</span></div></div>
+                            <div class="border-l border-slate-100 dark:border-slate-800"><div class="text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-1">Price</div><div class="text-xl md:text-2xl font-bold text-blue-600 dark:text-blue-400" id="dm-price">₹0</div></div>
+                        </div>
+                        <div class="space-y-8">
+                            <div><h4 class="font-bold mb-4 font-serif text-lg">Features</h4><div id="dm-amenities" class="flex flex-wrap gap-2"></div></div>
+                            <div class="bg-slate-50 dark:bg-slate-800 p-6 rounded-2xl border border-slate-100 dark:border-slate-700">
+                                <h4 class="font-bold mb-4 font-serif">Financial Overview</h4>
+                                <div class="flex justify-between items-center mb-4"><span class="text-sm text-slate-500 dark:text-slate-400">Est. Monthly EMI</span><span class="text-xl font-bold text-slate-900 dark:text-white" id="dm-emi">₹0</span></div>
+                                <button onclick="scrollToEmi(); closeModal('detail-modal')" class="text-blue-600 dark:text-blue-400 text-xs font-bold uppercase tracking-widest hover:underline p-1">Open Calculator</button>
+                            </div>
+                            <div id="recommendations" class="hidden">
+                                <h4 class="font-bold mb-4 font-serif">Similar Properties</h4>
+                                <div id="rec-list" class="space-y-3"></div>
+                            </div>
+                            <div class="pt-4 flex flex-col gap-3">
+                                <button onclick="openLeadModal('Schedule Visit')" class="w-full bg-slate-900 dark:bg-white dark:text-slate-900 text-white py-4 rounded-xl font-bold hover:bg-blue-600 dark:hover:bg-slate-200 transition shadow-xl min-h-[50px]">Schedule Private Visit</button>
+                                <div class="flex gap-3">
+                                    <button onclick="downloadBrochure()" class="flex-1 border border-slate-200 dark:border-slate-700 py-3 rounded-xl font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition text-sm min-h-[44px]">Download PDF</button>
+                                    <button class="flex-1 bg-green-500 text-white py-3 rounded-xl font-bold hover:bg-green-600 transition flex items-center justify-center gap-2 text-sm min-h-[44px]"><i class="fab fa-whatsapp text-xl"></i> WhatsApp</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Lead Form Modal -->
+    <div id="lead-modal" class="fixed inset-0 z-[100] bg-slate-900/80 backdrop-blur-sm hidden items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="lead-modal-title">
+        <div class="bg-white dark:bg-slate-900 w-full max-w-md p-10 rounded-[2rem] shadow-2xl relative text-center animate-fade-up">
+            <button onclick="closeModal('lead-modal')" class="absolute top-6 right-6 text-slate-300 hover:text-slate-800 dark:hover:text-white p-2 min-w-[44px] min-h-[44px]" aria-label="Close form"><i class="fas fa-times"></i></button>
+            <div class="w-16 h-16 bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-2xl flex items-center justify-center text-2xl mx-auto mb-6 shadow-inner"><i class="fas fa-user-tie"></i></div>
+            <h3 id="lead-modal-title" class="text-2xl font-serif font-bold mb-2 dark:text-white">Priority Service</h3>
+            <p class="text-slate-500 dark:text-slate-400 mb-8 text-sm">Connect with a senior consultant for an exclusive tour.</p>
+            <form onsubmit="handleLead(event)" class="space-y-4 text-left">
+                <div><label for="lead-name" class="text-xs font-bold text-slate-400 uppercase ml-2">Full Name</label><input type="text" id="lead-name" required class="w-full p-4 bg-slate-50 dark:bg-slate-800 dark:text-white rounded-xl border border-transparent focus:bg-white dark:focus:bg-slate-950 focus:border-blue-200 outline-none transition font-medium" placeholder="John Doe"></div>
+                <div><label for="lead-phone" class="text-xs font-bold text-slate-400 uppercase ml-2">Phone</label><input type="tel" id="lead-phone" required class="w-full p-4 bg-slate-50 dark:bg-slate-800 dark:text-white rounded-xl border border-transparent focus:bg-white dark:focus:bg-slate-950 focus:border-blue-200 outline-none transition font-medium" placeholder="+91 00000 00000"></div>
+                <input type="hidden" id="lead-type">
+                <button type="submit" class="w-full bg-slate-900 dark:bg-white dark:text-slate-900 text-white py-4 rounded-xl font-bold hover:bg-blue-600 dark:hover:bg-slate-200 transition shadow-lg mt-4 flex justify-center items-center gap-2 min-h-[50px]">Confirm Request</button>
+            </form>
+        </div>
+    </div>
+
+        <!-- Call To Action -->
+    <section class="py-24 bg-slate-900 dark:bg-blue-600 relative overflow-hidden transition-colors">
+        <div class="absolute inset-0 z-0">
+            <div class="absolute top-0 right-0 w-96 h-96 bg-blue-600/20 dark:bg-white/10 rounded-full -mr-48 -mt-48 blur-3xl"></div>
+            <div class="absolute bottom-0 left-0 w-96 h-96 bg-slate-800 dark:bg-blue-900/20 rounded-full -ml-48 -mb-48 blur-3xl"></div>
+        </div>
+        <div class="container mx-auto px-6 text-center relative z-10">
+            <h2 class="text-4xl md:text-6xl font-serif text-white mb-8 max-w-4xl mx-auto leading-tight">Ready to find your <span class="italic opacity-80">dream home</span>?</h2>
+            <p class="text-slate-400 dark:text-blue-100 text-xl mb-12 max-w-2xl mx-auto font-light">Book a private consultation with our senior consultants today and start your journey towards luxury living.</p>
+            <div class="flex flex-col sm:flex-row justify-center gap-6">
+                <button onclick="openLeadModal('CTA Consultation')" class="bg-white text-slate-900 dark:text-blue-600 px-10 py-5 rounded-[2rem] text-sm font-bold uppercase tracking-wider hover:bg-blue-600 hover:text-white transition shadow-2xl hover:scale-105 active:scale-95 duration-300">Book Consultation</button>
+                <button onclick="window.scrollTo({top: 0, behavior: 'smooth'})" class="bg-transparent text-white border-2 border-white/20 px-10 py-5 rounded-[2rem] text-sm font-bold uppercase tracking-wider hover:bg-white hover:text-slate-900 transition shadow-xl hover:scale-105 active:scale-95 duration-300">Explore Listings</button>
+            </div>
+        </div>
+    </section>
+
+    <!-- Detail Modal -->
+    <div id="detail-modal" class="fixed inset-0 z-[100] hidden opacity-0 transition-opacity duration-300 flex items-center justify-center p-4 md:p-10">
+        <div class="absolute inset-0 bg-slate-900/90 backdrop-blur-sm" onclick="closeModal('detail-modal')"></div>
+        <div class="bg-white dark:bg-slate-900 w-full max-w-6xl max-h-full overflow-y-auto rounded-[3rem] shadow-2xl relative z-10 flex flex-col lg:flex-row">
+            <button onclick="closeModal('detail-modal')" class="absolute top-6 right-6 w-12 h-12 bg-white dark:bg-slate-800 rounded-full flex items-center justify-center shadow-xl z-20 text-slate-900 dark:text-white"><i class="fas fa-times"></i></button>
+            
+            <!-- Gallery Sidebar -->
+            <div class="lg:w-1/2 h-80 lg:h-auto relative overflow-hidden bg-slate-100 dark:bg-slate-800">
+                <div id="modal-gallery" class="flex h-full overflow-x-auto snap-x snap-mandatory no-scrollbar">
+                    <!-- Images injected here -->
+                </div>
+                <div class="absolute bottom-6 left-1/2 -translate-x-1/2 flex gap-2">
+                    <div class="w-2 h-2 rounded-full bg-white shadow-lg"></div>
+                    <div class="w-2 h-2 rounded-full bg-white/50 shadow-lg"></div>
+                    <div class="w-2 h-2 rounded-full bg-white/50 shadow-lg"></div>
+                </div>
+            </div>
+
+            <!-- Content Area -->
+            <div class="lg:w-1/2 p-8 md:p-12">
+                <div class="flex flex-col md:flex-row justify-between items-start gap-4 mb-8">
+                    <div>
+                        <div id="dm-status" class="inline-block bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 text-[10px] font-bold uppercase tracking-widest px-4 py-1.5 rounded-full mb-4"></div>
+                        <h2 id="dm-title" class="text-3xl md:text-5xl font-serif font-medium dark:text-white"></h2>
+                        <p id="dm-loc" class="text-slate-500 dark:text-slate-400 mt-2 flex items-center gap-2"></p>
+                    </div>
+                    <div class="text-right">
+                        <div id="dm-price" class="text-3xl md:text-4xl font-bold text-blue-600 dark:text-blue-400"></div>
+                        <div id="dm-emi" class="text-xs text-slate-400 font-bold uppercase tracking-widest mt-1"></div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-3 gap-6 py-8 border-y border-slate-100 dark:border-slate-800 mb-8">
+                    <div class="flex items-center gap-4">
+                        <div class="w-12 h-12 bg-slate-50 dark:bg-slate-800 rounded-xl flex items-center justify-center text-slate-400"><i class="fas fa-bed text-xl"></i></div>
+                        <div><div class="text-lg font-bold dark:text-white" id="dm-beds"></div><div class="text-[10px] text-slate-400 uppercase font-bold tracking-widest">Beds</div></div>
+                    </div>
+                    <div class="flex items-center gap-4">
+                        <div class="w-12 h-12 bg-slate-50 dark:bg-slate-800 rounded-xl flex items-center justify-center text-slate-400"><i class="fas fa-bath text-xl"></i></div>
+                        <div><div class="text-lg font-bold dark:text-white">4</div><div class="text-[10px] text-slate-400 uppercase font-bold tracking-widest">Baths</div></div>
+                    </div>
+                    <div class="flex items-center gap-4">
+                        <div class="w-12 h-12 bg-slate-50 dark:bg-slate-800 rounded-xl flex items-center justify-center text-slate-400"><i class="fas fa-ruler-combined text-xl"></i></div>
+                        <div><div class="text-lg font-bold dark:text-white" id="dm-area"></div><div class="text-[10px] text-slate-400 uppercase font-bold tracking-widest">Sqft</div></div>
+                    </div>
+                </div>
+
+                <div class="mb-10">
+                    <h4 class="text-xs font-bold uppercase tracking-[0.2em] text-slate-400 mb-4">Key Amenities</h4>
+                    <div id="dm-amenities" class="flex flex-wrap gap-2">
+                        <!-- Amenities injected here -->
+                    </div>
+                </div>
+
+                <div class="flex flex-col sm:flex-row gap-4">
+                    <button onclick="openLeadModal('Property Inquiry')" class="flex-1 bg-slate-900 dark:bg-white dark:text-slate-900 text-white py-5 rounded-2xl font-bold uppercase tracking-widest hover:bg-blue-600 dark:hover:bg-slate-200 transition shadow-xl">Inquire Now</button>
+                    <button onclick="shareProperty()" class="w-full sm:w-16 h-16 border border-slate-200 dark:border-slate-700 rounded-2xl flex items-center justify-center text-slate-400 hover:text-slate-900 dark:hover:text-white transition"><i class="fas fa-share-alt"></i></button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- EMI Calculator Section -->
+    <section id="emi-section" class="py-24 bg-slate-50 dark:bg-slate-900 transition-colors">
+        <div class="container mx-auto px-6">
+            <div class="text-center mb-16">
+                <div class="text-blue-600 dark:text-blue-400 font-bold text-xs uppercase tracking-[0.3em] mb-4">Financial Planning</div>
+                <h2 class="text-4xl md:text-5xl font-serif font-medium mb-4 dark:text-white">Property Investment Calculator</h2>
+                <p class="text-slate-500 dark:text-slate-400 max-w-2xl mx-auto">Estimate your monthly commitments with our advanced mortgage calculator designed for luxury investments.</p>
+            </div>
+
+            <div class="max-w-6xl mx-auto bg-white dark:bg-slate-950 rounded-[3rem] p-8 md:p-16 shadow-2xl border border-slate-100 dark:border-slate-800">
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
+                    <div class="space-y-10">
+                        <div class="space-y-6">
+                            <div class="flex justify-between items-end">
+                                <label class="text-sm font-bold uppercase tracking-widest text-slate-400">Loan Amount</label>
+                                <div class="text-2xl font-bold text-blue-600 dark:text-blue-400" id="emi-amt-disp">₹50,00,000</div>
+                            </div>
+                            <input type="range" id="emi-amount" min="1000000" max="500000000" step="100000" value="5000000" class="w-full h-2 bg-slate-100 dark:bg-slate-800 rounded-lg appearance-none cursor-pointer accent-blue-600">
+                            <div class="flex justify-between text-[10px] font-bold text-slate-400 uppercase tracking-tighter">
+                                <span>10 L</span>
+                                <span>50 Cr</span>
+                            </div>
+                        </div>
+
+                        <div class="space-y-6">
+                            <div class="flex justify-between items-end">
+                                <label class="text-sm font-bold uppercase tracking-widest text-slate-400">Interest Rate (p.a)</label>
+                                <div class="text-2xl font-bold text-blue-600 dark:text-blue-400" id="emi-rate-disp">8.5%</div>
+                            </div>
+                            <input type="range" id="emi-rate" min="1" max="15" step="0.1" value="8.5" class="w-full h-2 bg-slate-100 dark:bg-slate-800 rounded-lg appearance-none cursor-pointer accent-blue-600">
+                            <div class="flex justify-between text-[10px] font-bold text-slate-400 uppercase tracking-tighter">
+                                <span>1%</span>
+                                <span>15%</span>
+                            </div>
+                        </div>
+
+                        <div class="space-y-6">
+                            <div class="flex justify-between items-end">
+                                <label class="text-sm font-bold uppercase tracking-widest text-slate-400">Tenure (Years)</label>
+                                <div class="text-2xl font-bold text-blue-600 dark:text-blue-400" id="emi-tenure-disp">20 Years</div>
+                            </div>
+                            <input type="range" id="emi-tenure" min="1" max="30" step="1" value="20" class="w-full h-2 bg-slate-100 dark:bg-slate-800 rounded-lg appearance-none cursor-pointer accent-blue-600">
+                            <div class="flex justify-between text-[10px] font-bold text-slate-400 uppercase tracking-tighter">
+                                <span>1 Yr</span>
+                                <span>30 Yrs</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="relative bg-slate-50 dark:bg-slate-900 rounded-[2.5rem] p-10 text-center border border-slate-100 dark:border-slate-800">
+                        <div class="mb-8">
+                            <div class="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400 mb-2">Estimated Monthly EMI</div>
+                            <div class="text-5xl md:text-6xl font-bold text-slate-900 dark:text-white tracking-tighter" id="emi-res-monthly">₹0</div>
+                        </div>
+                        
+                        <div class="h-64 relative mb-8">
+                            <canvas id="emiChart"></canvas>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-4">
+                            <div class="p-6 bg-white dark:bg-slate-950 rounded-2xl shadow-sm">
+                                <div class="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1">Total Interest</div>
+                                <div class="text-lg font-bold text-blue-600 dark:text-blue-400" id="emi-res-interest">₹0</div>
+                            </div>
+                            <div class="p-6 bg-white dark:bg-slate-950 rounded-2xl shadow-sm">
+                                <div class="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1">Processing Fee</div>
+                                <div class="text-lg font-bold text-slate-900 dark:text-white">0.5%</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+    
+    <!-- Portfolio Section -->
+    <section id="portfolio" class="py-24 bg-white dark:bg-slate-950 transition-colors">
+        <div class="container mx-auto px-6">
+            <div class="flex flex-col md:flex-row justify-between items-end mb-16 gap-6">
+                <div>
+                    <div class="text-blue-600 dark:text-blue-400 font-bold text-xs uppercase tracking-[0.2em] mb-4">Our Track Record</div>
+                    <h2 class="text-4xl font-serif font-medium dark:text-white">The Luxe Legacy</h2>
+                </div>
+                <p class="text-slate-500 dark:text-slate-400 max-w-md md:text-right">A decade of delivering architectural excellence and record-breaking transactions for the world's most discerning collectors.</p>
+            </div>
+
+            <!-- Past Projects Grid -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mb-20">
+                <div class="group relative overflow-hidden rounded-[2.5rem] h-96">
+                    <img src="https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=800" class="w-full h-full object-cover transition duration-700 group-hover:scale-110" alt="Past Project 1" loading="lazy">
+                    <div class="absolute inset-0 bg-gradient-to-t from-slate-900 via-transparent to-transparent opacity-80"></div>
+                    <div class="absolute bottom-8 left-8">
+                        <span class="bg-blue-600 text-white px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest mb-3 inline-block">Delivered 2024</span>
+                        <h3 class="text-2xl font-serif text-white font-bold">The Obsidian Villa</h3>
+                        <p class="text-slate-300 text-sm italic">Alibaug Coastal District</p>
+                    </div>
+                </div>
+
+                <div class="group relative overflow-hidden rounded-[2.5rem] h-96">
+                    <img src="https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?w=800" class="w-full h-full object-cover transition duration-700 group-hover:scale-110" alt="Past Project 2" loading="lazy">
+                    <div class="absolute inset-0 bg-gradient-to-t from-slate-900 via-transparent to-transparent opacity-80"></div>
+                    <div class="absolute bottom-8 left-8">
+                        <span class="bg-emerald-600 text-white px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest mb-3 inline-block">Sold: ₹145 Cr</span>
+                        <h3 class="text-2xl font-serif text-white font-bold">Zenith Penthouse</h3>
+                        <p class="text-slate-300 text-sm italic">Lower Parel, Mumbai</p>
+                    </div>
+                </div>
+
+                <div class="group relative overflow-hidden rounded-[2.5rem] h-96">
+                    <img src="https://images.unsplash.com/photo-1512917774080-9991f1c4c750?w=800" class="w-full h-full object-cover transition duration-700 group-hover:scale-110" alt="Past Project 3" loading="lazy">
+                    <div class="absolute inset-0 bg-gradient-to-t from-slate-900 via-transparent to-transparent opacity-80"></div>
+                    <div class="absolute bottom-8 left-8">
+                        <span class="bg-blue-600 text-white px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest mb-3 inline-block">Delivered 2023</span>
+                        <h3 class="text-2xl font-serif text-white font-bold">Marble Arch Estate</h3>
+                        <p class="text-slate-300 text-sm italic">South Kensington, London</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Awards Row -->
+            <div class="bg-slate-50 dark:bg-slate-900/50 rounded-[3rem] p-10 flex flex-wrap justify-around items-center gap-10 border border-slate-100 dark:border-slate-800">
+                <div class="text-center group">
+                    <div class="text-3xl text-slate-300 dark:text-slate-700 group-hover:text-blue-600 transition mb-3"><i class="fas fa-trophy"></i></div>
+                    <div class="font-bold text-xs uppercase tracking-widest dark:text-slate-400">Best Agency 2025</div>
+                    <div class="text-[10px] text-slate-400 dark:text-slate-500">Global Prop-Tech Awards</div>
+                </div>
+                <div class="text-center group">
+                    <div class="text-3xl text-slate-300 dark:text-slate-700 group-hover:text-blue-600 transition mb-3"><i class="fas fa-award"></i></div>
+                    <div class="font-bold text-xs uppercase tracking-widest dark:text-slate-400">Service Excellence</div>
+                    <div class="text-[10px] text-slate-400 dark:text-slate-500">Luxury Lifestyle Awards</div>
+                </div>
+                <div class="text-center group">
+                    <div class="text-3xl text-slate-300 dark:text-slate-700 group-hover:text-blue-600 transition mb-3"><i class="fas fa-medal"></i></div>
+                    <div class="font-bold text-xs uppercase tracking-widest dark:text-slate-400">Top Brokerage</div>
+                    <div class="text-[10px] text-slate-400 dark:text-slate-500">Real Estate Summit India</div>
+                </div>
+                <div class="text-center group">
+                    <div class="text-3xl text-slate-300 dark:text-slate-700 group-hover:text-blue-600 transition mb-3"><i class="fas fa-certificate"></i></div>
+                    <div class="font-bold text-xs uppercase tracking-widest dark:text-slate-400">ISO 9001 Certified</div>
+                    <div class="text-[10px] text-slate-400 dark:text-slate-500">Security & Quality Mgmt</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Why Choose Us -->
+    <section class="py-24 bg-slate-50 dark:bg-slate-900 transition-colors">
+        <div class="container mx-auto px-6">
+            <div class="text-center max-w-3xl mx-auto mb-20">
+                <div class="text-blue-600 dark:text-blue-400 font-bold text-xs uppercase tracking-[0.3em] mb-4">Core Values</div>
+                <h2 class="text-4xl md:text-5xl font-serif font-medium mb-4 dark:text-white">Why Choose Luxe Living?</h2>
+                <p class="text-slate-500 dark:text-slate-400">We redefine luxury real estate through transparency, security, and unparalleled service excellence.</p>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+                <!-- Trust Badge 1 -->
+                <div class="bg-white dark:bg-slate-800 p-10 rounded-[2.5rem] shadow-xl border border-slate-100 dark:border-slate-700 text-center hover:-translate-y-2 transition duration-500 group">
+                    <div class="w-20 h-20 bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-3xl flex items-center justify-center text-4xl mx-auto mb-8 group-hover:scale-110 transition-transform">
+                        <i class="fas fa-clipboard-check"></i>
+                    </div>
+                    <h3 class="text-xl font-bold mb-4 dark:text-white">Verified Listings</h3>
+                    <p class="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">Every property undergoes a 50-point verification process for legal and structural integrity.</p>
+                </div>
+
+                <!-- Trust Badge 2 -->
+                <div class="bg-white dark:bg-slate-800 p-10 rounded-[2.5rem] shadow-xl border border-slate-100 dark:border-slate-700 text-center hover:-translate-y-2 transition duration-500 group">
+                    <div class="w-20 h-20 bg-green-50 dark:bg-green-900/30 text-green-600 dark:text-green-400 rounded-3xl flex items-center justify-center text-4xl mx-auto mb-8 group-hover:scale-110 transition-transform">
+                        <i class="fas fa-user-tie"></i>
+                    </div>
+                    <h3 class="text-xl font-bold mb-4 dark:text-white">Expert Agents</h3>
+                    <p class="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">Our consultants are industry veterans with an average of 15+ years in high-end real estate.</p>
+                </div>
+
+                <!-- Trust Badge 3 -->
+                <div class="bg-white dark:bg-slate-800 p-10 rounded-[2.5rem] shadow-xl border border-slate-100 dark:border-slate-700 text-center hover:-translate-y-2 transition duration-500 group">
+                    <div class="w-20 h-20 bg-purple-50 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 rounded-3xl flex items-center justify-center text-4xl mx-auto mb-8 group-hover:scale-110 transition-transform">
+                        <i class="fas fa-gavel"></i>
+                    </div>
+                    <h3 class="text-xl font-bold mb-4 dark:text-white">Legal Assistance</h3>
+                    <p class="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">In-house legal team to handle all documentation, titles, and registration seamlessy.</p>
+                </div>
+
+                <!-- Trust Badge 4 -->
+                <div class="bg-white dark:bg-slate-800 p-10 rounded-[2.5rem] shadow-xl border border-slate-100 dark:border-slate-700 text-center hover:-translate-y-2 transition duration-500 group">
+                    <div class="w-20 h-20 bg-amber-50 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 rounded-3xl flex items-center justify-center text-4xl mx-auto mb-8 group-hover:scale-110 transition-transform">
+                        <i class="fas fa-hand-holding-dollar"></i>
+                    </div>
+                    <h3 class="text-xl font-bold mb-4 dark:text-white">Easy Financing</h3>
+                    <p class="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">Preferred partnerships with top banks for exclusive interest rates and quick approvals.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Agent Section -->
+    <section class="py-24 bg-white dark:bg-slate-950 transition-colors">
+        <div class="container mx-auto px-6">
+            <div class="text-center mb-16">
+                <div class="text-blue-600 dark:text-blue-400 font-bold text-xs uppercase tracking-[0.3em] mb-4">Our Team</div>
+                <h2 class="text-4xl md:text-5xl font-serif font-medium mb-4 dark:text-white">Meet Our Property Consultants</h2>
+                <p class="text-slate-500 dark:text-slate-400 max-w-2xl mx-auto">Dedicated professionals committed to finding your perfect home with personalized guidance at every step.</p>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                <!-- Agent 1 -->
+                <div class="group bg-slate-50 dark:bg-slate-900 rounded-[3rem] p-10 text-center border border-transparent hover:border-blue-200 dark:hover:border-blue-800 transition-all duration-500 hover:shadow-2xl">
+                    <div class="relative w-40 h-40 mx-auto mb-8">
+                        <img src="https://images.unsplash.com/photo-1560250097-0b93528c311a?w=400&h=400&fit=crop" class="w-full h-full object-cover rounded-[2.5rem] shadow-xl transform group-hover:scale-105 transition-transform duration-500" alt="Sarah Jenkins">
+                        <div class="absolute -bottom-2 -right-2 w-10 h-10 bg-green-500 border-4 border-white dark:border-slate-900 rounded-full flex items-center justify-center text-white text-xs" title="Online"><i class="fas fa-check"></i></div>
+                    </div>
+                    <h3 class="text-2xl font-bold text-slate-900 dark:text-white mb-2">Sarah Jenkins</h3>
+                    <p class="text-blue-600 dark:text-blue-400 font-bold text-xs uppercase tracking-[0.2em] mb-8">Senior Property Consultant</p>
+                    <div class="flex flex-col gap-3">
+                        <button onclick="openLeadModal('Contact Sarah')" class="w-full bg-slate-900 dark:bg-white dark:text-slate-900 text-white py-4 rounded-2xl font-bold text-xs uppercase tracking-widest hover:bg-blue-600 dark:hover:bg-slate-200 transition shadow-lg">Contact Agent</button>
+                        <div class="flex justify-center gap-4 mt-2">
+                            <a href="#" class="text-slate-400 hover:text-blue-600 transition"><i class="fab fa-linkedin-in"></i></a>
+                            <a href="#" class="text-slate-400 hover:text-blue-600 transition"><i class="fab fa-instagram"></i></a>
+                            <a href="#" class="text-slate-400 hover:text-blue-600 transition"><i class="fas fa-envelope"></i></a>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Agent 2 -->
+                <div class="group bg-slate-50 dark:bg-slate-900 rounded-[3rem] p-10 text-center border border-transparent hover:border-blue-200 dark:hover:border-blue-800 transition-all duration-500 hover:shadow-2xl">
+                    <div class="relative w-40 h-40 mx-auto mb-8">
+                        <img src="https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=400&h=400&fit=crop" class="w-full h-full object-cover rounded-[2.5rem] shadow-xl transform group-hover:scale-105 transition-transform duration-500" alt="Michael Chen">
+                        <div class="absolute -bottom-2 -right-2 w-10 h-10 bg-green-500 border-4 border-white dark:border-slate-900 rounded-full flex items-center justify-center text-white text-xs" title="Online"><i class="fas fa-check"></i></div>
+                    </div>
+                    <h3 class="text-2xl font-bold text-slate-900 dark:text-white mb-2">Michael Chen</h3>
+                    <p class="text-blue-600 dark:text-blue-400 font-bold text-xs uppercase tracking-[0.2em] mb-8">Luxury Estate Specialist</p>
+                    <div class="flex flex-col gap-3">
+                        <button onclick="openLeadModal('Contact Michael')" class="w-full bg-slate-900 dark:bg-white dark:text-slate-900 text-white py-4 rounded-2xl font-bold text-xs uppercase tracking-widest hover:bg-blue-600 dark:hover:bg-slate-200 transition shadow-lg">Contact Agent</button>
+                        <div class="flex justify-center gap-4 mt-2">
+                            <a href="#" class="text-slate-400 hover:text-blue-600 transition"><i class="fab fa-linkedin-in"></i></a>
+                            <a href="#" class="text-slate-400 hover:text-blue-600 transition"><i class="fab fa-instagram"></i></a>
+                            <a href="#" class="text-slate-400 hover:text-blue-600 transition"><i class="fas fa-envelope"></i></a>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Agent 3 -->
+                <div class="group bg-slate-50 dark:bg-slate-900 rounded-[3rem] p-10 text-center border border-transparent hover:border-blue-200 dark:hover:border-blue-800 transition-all duration-500 hover:shadow-2xl">
+                    <div class="relative w-40 h-40 mx-auto mb-8">
+                        <img src="https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=400&h=400&fit=crop" class="w-full h-full object-cover rounded-[2.5rem] shadow-xl transform group-hover:scale-105 transition-transform duration-500" alt="Emma Thompson">
+                        <div class="absolute -bottom-2 -right-2 w-10 h-10 bg-slate-300 border-4 border-white dark:border-slate-900 rounded-full flex items-center justify-center text-white text-xs" title="Away"><i class="fas fa-clock"></i></div>
+                    </div>
+                    <h3 class="text-2xl font-bold text-slate-900 dark:text-white mb-2">Emma Thompson</h3>
+                    <p class="text-blue-600 dark:text-blue-400 font-bold text-xs uppercase tracking-[0.2em] mb-8">Commercial Real Estate Expert</p>
+                    <div class="flex flex-col gap-3">
+                        <button onclick="openLeadModal('Contact Emma')" class="w-full bg-slate-900 dark:bg-white dark:text-slate-900 text-white py-4 rounded-2xl font-bold text-xs uppercase tracking-widest hover:bg-blue-600 dark:hover:bg-slate-200 transition shadow-lg">Contact Agent</button>
+                        <div class="flex justify-center gap-4 mt-2">
+                            <a href="#" class="text-slate-400 hover:text-blue-600 transition"><i class="fab fa-linkedin-in"></i></a>
+                            <a href="#" class="text-slate-400 hover:text-blue-600 transition"><i class="fab fa-instagram"></i></a>
+                            <a href="#" class="text-slate-400 hover:text-blue-600 transition"><i class="fas fa-envelope"></i></a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Testimonials -->
+    <section class="py-24 bg-slate-50 dark:bg-slate-900 transition-colors">
+        <div class="container mx-auto px-6">
+            <div class="text-center mb-16">
+                <div class="text-blue-600 dark:text-blue-400 font-bold text-xs uppercase tracking-[0.3em] mb-4">Client Reviews</div>
+                <h2 class="text-4xl md:text-5xl font-serif font-medium mb-4 dark:text-white">What Our Clients Say</h2>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                <!-- Testimonial 1 -->
+                <div class="bg-white dark:bg-slate-800 p-10 rounded-[3rem] border border-slate-100 dark:border-slate-700 shadow-xl relative group">
+                    <div class="flex text-amber-400 mb-6 gap-1">
+                        <i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i>
+                    </div>
+                    <p class="text-slate-600 dark:text-slate-300 italic mb-8 leading-relaxed text-lg">"The data insights helped me spot an undervalued asset in Bandra. Exceptional platform for serious investors seeking high-yield luxury properties."</p>
+                    <div class="flex items-center gap-4">
+                        <img src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&h=100&fit=crop" class="w-14 h-14 rounded-2xl object-cover border-2 border-white dark:border-slate-600" alt="Aarav Mehta">
+                        <div>
+                            <div class="font-bold text-slate-900 dark:text-white">Aarav Mehta</div>
+                            <div class="text-xs text-blue-600 font-bold uppercase tracking-widest">Venture Capitalist</div>
+                        </div>
+                    </div>
+                    <i class="fas fa-quote-right absolute top-10 right-10 text-slate-50 dark:text-slate-700/50 text-6xl -z-0 group-hover:text-blue-50 dark:group-hover:text-blue-900/10 transition-colors"></i>
+                </div>
+
+                <!-- Testimonial 2 -->
+                <div class="bg-white dark:bg-slate-800 p-10 rounded-[3rem] border border-slate-100 dark:border-slate-700 shadow-xl relative group">
+                    <div class="flex text-amber-400 mb-6 gap-1">
+                        <i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i>
+                    </div>
+                    <p class="text-slate-600 dark:text-slate-300 italic mb-8 leading-relaxed text-lg">"Finally, a luxury portal that respects my time. The comparison tool and 3D tours are genuine game changers for remote property selection."</p>
+                    <div class="flex items-center gap-4">
+                        <img src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&h=100&fit=crop" class="w-14 h-14 rounded-2xl object-cover border-2 border-white dark:border-slate-600" alt="Priya Singh">
+                        <div>
+                            <div class="font-bold text-slate-900 dark:text-white">Priya Singh</div>
+                            <div class="text-xs text-blue-600 font-bold uppercase tracking-widest">Architect</div>
+                        </div>
+                    </div>
+                    <i class="fas fa-quote-right absolute top-10 right-10 text-slate-50 dark:text-slate-700/50 text-6xl -z-0 group-hover:text-blue-50 dark:group-hover:text-blue-900/10 transition-colors"></i>
+                </div>
+
+                <!-- Testimonial 3 -->
+                <div class="bg-white dark:bg-slate-800 p-10 rounded-[3rem] border border-slate-100 dark:border-slate-700 shadow-xl relative group">
+                    <div class="flex text-amber-400 mb-6 gap-1">
+                        <i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star-half-alt"></i>
+                    </div>
+                    <p class="text-slate-600 dark:text-slate-300 italic mb-8 leading-relaxed text-lg">"Seamless experience from virtual tour to site visit booking. Highly recommended for elite portfolios and fast-moving international transactions."</p>
+                    <div class="flex items-center gap-4">
+                        <img src="https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=100&h=100&fit=crop" class="w-14 h-14 rounded-2xl object-cover border-2 border-white dark:border-slate-600" alt="Kabir Bedi">
+                        <div>
+                            <div class="font-bold text-slate-900 dark:text-white">Kabir Bedi</div>
+                            <div class="text-xs text-blue-600 font-bold uppercase tracking-widest">CEO, TechStream</div>
+                        </div>
+                    </div>
+                    <i class="fas fa-quote-right absolute top-10 right-10 text-slate-50 dark:text-slate-700/50 text-6xl -z-0 group-hover:text-blue-50 dark:group-hover:text-blue-900/10 transition-colors"></i>
+                </div>
+            </div>
+        </div>
+    </section>
+
+
+    <!-- Footer -->
+    <footer id="main-footer" class="bg-slate-950 text-slate-400 pt-20 pb-10 border-t border-slate-900 transition-colors">
+        <div class="container mx-auto px-6">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 mb-16">
+                <!-- Brand & Newsletter -->
+                <div class="col-span-1 lg:col-span-1">
+                    <div class="flex items-center gap-2 text-white font-bold text-2xl mb-6">
+                        <div class="bg-white text-slate-900 w-8 h-8 rounded-lg flex items-center justify-center text-sm"><i class="fas fa-gem"></i></div>
+                        Luxe Living
+                    </div>
+                    <p class="text-sm leading-relaxed mb-8">Curating the world's most prestigious real estate for those who demand nothing less than perfection.</p>
+                    <div class="flex gap-4">
+                        <a href="#" class="w-10 h-10 rounded-full bg-slate-900 flex items-center justify-center text-white hover:bg-blue-600 transition" aria-label="Instagram"><i class="fab fa-instagram"></i></a>
+                        <a href="#" class="w-10 h-10 rounded-full bg-slate-900 flex items-center justify-center text-white hover:bg-blue-600 transition" aria-label="LinkedIn"><i class="fab fa-linkedin-in"></i></a>
+                        <a href="#" class="w-10 h-10 rounded-full bg-slate-900 flex items-center justify-center text-white hover:bg-blue-600 transition" aria-label="Twitter"><i class="fab fa-twitter"></i></a>
+                    </div>
+                </div>
+
+                <!-- Quick Links -->
+                <div>
+                    <h4 class="text-white font-bold uppercase tracking-widest text-xs mb-6">Portfolio</h4>
+                    <ul class="space-y-4 text-sm font-medium">
+                        <li><a href="#discover" class="hover:text-blue-400 transition">Exclusive Collection</a></li>
+                        <li><a href="#map-view" class="hover:text-blue-400 transition">Interactive Map</a></li>
+                        <li><a href="#market-data" class="hover:text-blue-400 transition">Market Insights</a></li>
+                        <li><a href="#portfolio" class="hover:text-blue-400 transition">Past Success</a></li>
+                    </ul>
+                </div>
+
+                <!-- Locations -->
+                <div>
+                    <h4 class="text-white font-bold uppercase tracking-widest text-xs mb-6">Key Markets</h4>
+                    <ul class="space-y-4 text-sm font-medium">
+                        <li><a href="#" class="hover:text-blue-400 transition">South Mumbai</a></li>
+                        <li><a href="#" class="hover:text-blue-400 transition">Bandra West</a></li>
+                        <li><a href="#" class="hover:text-blue-400 transition">Worli Sea Face</a></li>
+                        <li><a href="#" class="hover:text-blue-400 transition">Khandala Hills</a></li>
+                    </ul>
+                </div>
+
+                <!-- Contact -->
+                <div>
+                    <h4 class="text-white font-bold uppercase tracking-widest text-xs mb-6">Concierge</h4>
+                    <ul class="space-y-4 text-sm font-medium">
+                        <li class="flex items-start gap-3"><i class="fas fa-map-marker-alt text-blue-500 mt-1"></i> <span>1204 Nariman Point,<br/>Mumbai, MH 400021</span></li>
+                        <li class="flex items-center gap-3"><i class="fas fa-phone-alt text-blue-500"></i> <span>+91 22 4567 8900</span></li>
+                        <li class="flex items-center gap-3"><i class="fas fa-envelope text-blue-500"></i> <span>contact@luxeliving.com</span></li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Bottom Bar -->
+            <div class="pt-8 border-t border-slate-900 flex flex-col md:flex-row justify-between items-center gap-6">
+                <p class="text-xs opacity-50">© 2026 Luxe Living International. All rights reserved.</p>
+                <div class="flex gap-8 text-[10px] font-bold uppercase tracking-widest opacity-50">
+                    <a href="#" class="hover:opacity-100">Privacy Policy</a>
+                    <a href="#" class="hover:opacity-100">Terms of Service</a>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Scripts -->
+    <script>
+        const properties = [
+            { id: 101, title: "Emerald Forest Estate", location: "Khandala Hills", price: 45000000, type: "Villa", beds: 5, area: 6500, coords: [18.752, 73.375], status: "Exclusive", images: ["https://images.unsplash.com/photo-1613490493576-7fde63acd811?w=800", "https://images.unsplash.com/photo-1598228723793-52759bba239c?w=800"], amenities: ["Private Waterfall", "Helipad", "Solar Grid"] },
+            { id: 102, title: "Skyline Penthouse", location: "Worli Sea Face", price: 125000000, type: "Penthouse", beds: 4, area: 4200, coords: [19.015, 72.816], status: "Rare Find", images: ["https://images.unsplash.com/photo-1512917774080-9991f1c4c750?w=800", "https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=800"], amenities: ["Sea View Deck", "Private Elevator", "Concierge"] },
+            { id: 103, title: "The Colonial Manor", location: "Bandra West", price: 85000000, type: "Villa", beds: 6, area: 5500, coords: [19.058, 72.830], status: "Sold Out", images: ["https://images.unsplash.com/photo-1512917774080-9991f1c4c750?w=800", "https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?w=800"], amenities: ["Heritage Design", "Lap Pool", "Library"] },
+            { id: 104, title: "Azure Residences", location: "South Mumbai", price: 32000000, type: "Apartment", beds: 3, area: 2100, coords: [18.960, 72.805], status: "Available", images: ["https://images.unsplash.com/photo-1512918728675-ed5a9ecdebfd?w=800", "https://images.unsplash.com/photo-1502005229766-9397667ef08f?w=800"], amenities: ["Clubhouse", "Spa", "Kids Zone"] },
+            { id: 105, title: "Serenity Heights", location: "Bandra West", price: 21000000, type: "Apartment", beds: 2, area: 1450, coords: [19.065, 72.835], status: "New Launch", images: ["https://images.unsplash.com/photo-1501183638710-841dd1904471?w=800", "https://images.unsplash.com/photo-1556912172-45b7abe8b7e1?w=800"], amenities: ["Rooftop Garden", "Gym", "Co-working"] },
+            { id: 106, title: "Cliffside Retreat", location: "Khandala Hills", price: 55000000, type: "Villa", beds: 4, area: 4800, coords: [18.760, 73.385], status: "Available", images: ["https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=800", "https://images.unsplash.com/photo-1600047509807-ba8f99d2cdde?w=800"], amenities: ["Infinity Pool", "BBQ Deck", "Valley View"] }
+        ];
+
+        let state = { saved: [], compare: [], filter: 'all', search: '', sort: 'default' };
+        let map, markers = [], emiChart, testimonialInterval, searchDebounce;
+
+        function init() {
+            try {
+                // Dark Mode Init
+                if (localStorage.getItem('theme') === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+                    document.documentElement.classList.add('dark');
+                } else {
+                    document.documentElement.classList.remove('dark');
+                }
+
+                // LocalStorage loading
+                const rawSaved = localStorage.getItem('luxe_saved');
+                if(rawSaved) {
+                    const parsed = JSON.parse(rawSaved);
+                    if(Array.isArray(parsed)) state.saved = parsed.filter(id => typeof id === 'number' && properties.some(p => p.id === id));
+                }
+                updateSavedUI();
+
+                // Map Init
+                const mapEl = document.getElementById('map');
+                if(mapEl && typeof L !== 'undefined') {
+                    map = L.map('map').setView([19.00, 73.10], 9);
+                    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', { attribution: '&copy; CartoDB' }).addTo(map);
+                }
+
+                initChart();
+                renderGrid(true); // Initial skeleton UI
+                setTimeout(() => renderGrid(), 800); // Swap with real data
+                
+                // Event Listeners
+                document.getElementById('mobile-menu-btn').onclick = () => document.getElementById('mobile-menu').classList.add('active');
+                document.getElementById('close-mobile-menu').onclick = closeMobileMenu;
+                
+                document.querySelectorAll('.filter-btn').forEach(btn => btn.onclick = (e) => {
+                    document.querySelectorAll('.filter-btn').forEach(b => {
+                        b.classList.remove('bg-slate-900', 'text-white', 'dark:bg-white', 'dark:text-slate-900');
+                        b.classList.add('bg-white', 'text-slate-600', 'dark:bg-slate-900', 'dark:text-slate-300');
+                        b.setAttribute('aria-selected', 'false');
+                    });
+                    e.target.classList.remove('bg-white', 'text-slate-600', 'dark:bg-slate-900', 'dark:text-slate-300');
+                    e.target.classList.add('bg-slate-900', 'text-white', 'dark:bg-white', 'dark:text-slate-900');
+                    e.target.setAttribute('aria-selected', 'true');
+                    state.filter = e.target.dataset.filter;
+                    renderGrid();
+                });
+
+                // Debounced search
+                document.getElementById('search-input').oninput = (e) => {
+                    clearTimeout(searchDebounce);
+                    searchDebounce = setTimeout(() => {
+                        state.search = e.target.value.toLowerCase();
+                        renderGrid();
+                    }, 300);
+                };
+
+                document.getElementById('price-sort').onchange = (e) => { state.sort = e.target.value; renderGrid(); };
+
+                ['amount', 'rate', 'tenure'].forEach(id => document.getElementById(`emi-${id}`).oninput = calculateEMI);
+                calculateEMI();
+
+                // Keyboard listeners
+                window.onkeydown = (e) => {
+                    if (e.key === 'Escape') {
+                        ['detail-modal', 'lead-modal', 'compare-modal'].forEach(id => closeModal(id));
+                        document.getElementById('mobile-menu').classList.remove('active');
+                        document.getElementById('saved-drawer').classList.add('translate-x-full');
+                    }
+                };
+
+                // Scroll listener for back-to-top
+                window.onscroll = () => {
+                    const btn = document.getElementById('back-to-top');
+                    if(window.scrollY > 500) btn.classList.add('visible');
+                    else btn.classList.remove('visible');
+                };
+
+            } catch (err) { console.error("Init Error", err); showToast("System Load Failed", "error"); }
+        }
+
+        function toggleDarkMode() {
+            document.documentElement.classList.toggle('dark');
+            if (document.documentElement.classList.contains('dark')) {
+                localStorage.setItem('theme', 'dark');
+            } else {
+                localStorage.setItem('theme', 'light');
+            }
+        }
+
+        function escapeHTML(str) {
+            const div = document.createElement('div');
+            div.textContent = str;
+            return div.innerHTML;
+        }
+
+        function renderGrid(skeleton = false) {
+            const grid = document.getElementById('property-list');
+            if(!grid) return;
+            grid.innerHTML = '';
+
+            if (skeleton) {
+                for (let i = 0; i < 6; i++) {
+                    grid.innerHTML += `
+                        <div class="bg-white dark:bg-slate-900 rounded-[2rem] overflow-hidden border border-slate-100 dark:border-slate-800 animate-pulse">
+                            <div class="bg-slate-200 dark:bg-slate-800 h-64"></div>
+                            <div class="p-6 space-y-4">
+                                <div class="h-6 bg-slate-200 dark:bg-slate-800 rounded w-3/4"></div>
+                                <div class="h-4 bg-slate-200 dark:bg-slate-800 rounded w-1/2"></div>
+                                <div class="flex gap-2"><div class="h-10 bg-slate-200 dark:bg-slate-800 rounded flex-1"></div><div class="h-10 bg-slate-200 dark:bg-slate-800 rounded w-12"></div></div>
+                            </div>
+                        </div>`;
+                }
+                return;
+            }
+
+            markers.forEach(m => map && map.removeLayer(m));
+            markers = [];
+
+            let filtered = properties.filter(p => {
+                const matchType = state.filter === 'all' || p.type === state.filter;
+                const matchSearch = p.title.toLowerCase().includes(state.search) || p.location.toLowerCase().includes(state.search);
+                return matchType && matchSearch;
+            });
+
+            if(state.sort === 'asc') filtered.sort((a,b) => a.price - b.price);
+            if(state.sort === 'desc') filtered.sort((a,b) => b.price - a.price);
+
+            document.getElementById('empty-state').classList.toggle('hidden', filtered.length > 0);
+            const bounds = map ? L.latLngBounds() : null;
+
+            filtered.forEach(p => {
+                const card = document.createElement('div');
+                card.className = "bg-white dark:bg-slate-900 rounded-[2rem] overflow-hidden shadow-lg border border-slate-100 dark:border-slate-800 property-card group";
+                const isSaved = state.saved.includes(p.id) ? 'text-red-500' : 'text-white/80 hover:text-white';
+                
+                card.innerHTML = `
+                    <div class="relative h-64 md:h-72 overflow-hidden cursor-pointer" onclick="openDetail(${p.id})">
+                        <img src="${escapeHTML(p.images[0])}" class="w-full h-full object-cover transition duration-700 group-hover:scale-110" alt="${escapeHTML(p.title)}" loading="lazy">
+                        <div class="absolute inset-0 bg-gradient-to-t from-slate-900/60 to-transparent opacity-60"></div>
+                        <div class="absolute top-4 left-4 bg-white/90 backdrop-blur px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest shadow-sm text-slate-900">${escapeHTML(p.status)}</div>
+                        <button onclick="event.stopPropagation(); toggleSave(${p.id})" class="absolute top-4 right-4 w-11 h-11 rounded-full bg-black/20 backdrop-blur flex items-center justify-center ${isSaved} transition text-lg" aria-label="Save ${escapeHTML(p.title)}"><i class="fas fa-heart"></i></button>
+                        
+                        <!-- Quick View Button -->
+                        <div class="absolute inset-0 flex items-center justify-center pointer-events-none">
+                            <button onclick="event.stopPropagation(); openDetail(${p.id})" class="quick-view-btn pointer-events-auto bg-white/90 dark:bg-slate-900/90 backdrop-blur text-slate-900 dark:text-white px-6 py-3 rounded-full font-bold text-xs uppercase tracking-widest shadow-xl hover:scale-105 transition">Quick View</button>
+                        </div>
+
+                        <div class="absolute bottom-6 left-6 text-white pr-6">
+                            <div class="text-2xl font-bold">${formatPrice(p.price)}</div>
+                            <div class="text-sm opacity-90 truncate"><i class="fas fa-map-marker-alt mr-1"></i> ${escapeHTML(p.location)}</div>
+                        </div>
+                    </div>
+                    <div class="p-6">
+                        <h3 class="text-xl font-bold text-slate-900 dark:text-white leading-tight mb-4 truncate">${escapeHTML(p.title)}</h3>
+                        <div class="flex justify-between text-xs text-slate-500 dark:text-slate-400 border-t border-slate-100 dark:border-slate-800 pt-4 mb-6">
+                            <span><i class="fas fa-bed mr-1"></i> ${p.beds} Beds</span>
+                            <span><i class="fas fa-ruler-combined mr-1"></i> ${p.area} sqft</span>
+                            <span><i class="fas fa-home mr-1"></i> ${escapeHTML(p.type)}</span>
+                        </div>
+                        <div class="flex gap-2">
+                            <button onclick="openDetail(${p.id})" class="flex-1 bg-slate-900 dark:bg-white dark:text-slate-900 text-white py-3 rounded-xl font-bold text-[10px] uppercase tracking-widest hover:bg-blue-600 dark:hover:bg-slate-200 transition min-h-[44px]">View Details</button>
+                            <button onclick="toggleCompare(${p.id})" class="w-12 border border-slate-200 dark:border-slate-700 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-400 hover:text-slate-900 dark:hover:text-white transition min-h-[44px]" aria-label="Compare"><i class="fas fa-exchange-alt"></i></button>
+                        </div>
+                    </div>`;
+                grid.appendChild(card);
+
+                if(map) {
+                    const icon = L.divIcon({ className: 'bg-transparent', html: `<div class="w-8 h-8 bg-slate-900 rounded-full border-2 border-white shadow-xl flex items-center justify-center text-white text-[10px]"><i class="fas fa-home"></i></div>` });
+                    const marker = L.marker(p.coords, {icon: icon}).addTo(map);
+                    marker.bindPopup(`<div class="p-2"><img src="${escapeHTML(p.images[0])}" class="w-full h-24 object-cover rounded-lg mb-2"><div class="font-bold text-sm truncate">${escapeHTML(p.title)}</div><div class="text-blue-600 font-bold text-xs">${formatPrice(p.price)}</div><button onclick="openDetail(${p.id})" class="w-full mt-2 bg-slate-100 text-slate-700 text-[10px] py-2 rounded font-bold">VIEW</button></div>`);
+                    markers.push(marker);
+                    bounds.extend(p.coords);
+                }
+            });
+            if(map && markers.length > 0) map.fitBounds(bounds, {padding: [50,50]});
+        }
+
+        function openDetail(id) {
+            const p = properties.find(x => x.id === id);
+            if(!p) return;
+            document.getElementById('dm-title').textContent = p.title;
+            const locEl = document.getElementById('dm-loc');
+            locEl.innerHTML = `<i class="fas fa-map-marker-alt mr-2 text-blue-500"></i> ${escapeHTML(p.location)}`;
+            document.getElementById('dm-price').textContent = formatPrice(p.price);
+            document.getElementById('dm-beds').textContent = p.beds;
+            document.getElementById('dm-area').textContent = p.area;
+            document.getElementById('dm-status').textContent = p.status;
+            
+            const gallery = document.getElementById('modal-gallery');
+            gallery.innerHTML = p.images.map(img => `<img src="${escapeHTML(img)}" class="w-full h-full object-cover flex-shrink-0 snap-center" alt="Property View">`).join('');
+            
+            document.getElementById('dm-amenities').innerHTML = p.amenities.map(a => `<span class="bg-slate-100 dark:bg-slate-800 px-4 py-2 rounded-lg text-[10px] font-bold text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700">${escapeHTML(a)}</span>`).join('');
+            
+            const r = 8.5 / 1200; const P = p.price * 0.8; const emiVal = Math.round((P * r * Math.pow(1+r,240)) / (Math.pow(1+r,240)-1));
+            document.getElementById('dm-emi').textContent = '₹' + emiVal.toLocaleString('en-IN') + '/mo';
+            
+            openModal('detail-modal');
+        }
+
+        function toggleSave(id) {
+            const idx = state.saved.indexOf(id);
+            if(idx === -1) { state.saved.push(id); showToast('Added to Saved Collection', 'success'); }
+            else { state.saved.splice(idx, 1); showToast('Removed from Saved Collection', 'info'); }
+            localStorage.setItem('luxe_saved', JSON.stringify(state.saved));
+            updateSavedUI(); renderGrid();
+        }
+
+        function updateSavedUI() {
+            const badge = document.getElementById('saved-badge');
+            badge.textContent = state.saved.length; badge.style.opacity = state.saved.length > 0 ? '1' : '0';
+            const list = document.getElementById('saved-list');
+            list.innerHTML = state.saved.length ? '' : '<div class="text-center text-slate-400 dark:text-slate-500 mt-10">Empty.</div>';
+            state.saved.forEach(id => {
+                const p = properties.find(x => x.id === id);
+                if(p) list.innerHTML += `<div class="flex gap-4 border-b border-slate-100 dark:border-slate-800 pb-4"><img src="${escapeHTML(p.images[0])}" class="w-20 h-20 rounded-xl object-cover"><div class="flex-1"><div class="font-bold text-sm truncate dark:text-white">${escapeHTML(p.title)}</div><div class="text-blue-600 dark:text-blue-400 font-bold text-xs">${formatPrice(p.price)}</div><button onclick="openDetail(${p.id})" class="text-[10px] text-slate-400 dark:text-slate-500 hover:text-slate-900 dark:hover:text-white mt-1 font-bold uppercase">View</button></div></div>`;
+            });
+        }
+
+        function openModal(id) {
+            const m = document.getElementById(id); m.classList.remove('hidden');
+            setTimeout(() => m.classList.remove('opacity-0'), 10);
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeModal(id) {
+            const m = document.getElementById(id); if(!m) return;
+            m.classList.add('opacity-0');
+            setTimeout(() => { m.classList.add('hidden'); document.body.style.overflow = 'auto'; }, 300);
+        }
+
+        function calculateEMI() {
+            const P = parseFloat(document.getElementById('emi-amount').value);
+            const r = parseFloat(document.getElementById('emi-rate').value);
+            const t = parseFloat(document.getElementById('emi-tenure').value);
+            document.getElementById('emi-amt-disp').textContent = formatPrice(P);
+            document.getElementById('emi-rate-disp').textContent = r + '%';
+            document.getElementById('emi-tenure-disp').textContent = t + ' Years';
+            const R = r / 1200; const N = t * 12; const emiVal = (P * R * Math.pow(1+R,N)) / (Math.pow(1+R,N)-1);
+            const totalPay = emiVal * N; const totalInt = totalPay - P;
+            document.getElementById('emi-res-monthly').textContent = '₹' + Math.round(emiVal).toLocaleString('en-IN');
+            document.getElementById('emi-res-interest').textContent = formatPrice(totalInt);
+            if(emiChart) { emiChart.data.datasets[0].data = [P, totalInt]; emiChart.update(); }
+        }
+
+        function initChart() {
+            const canvas = document.getElementById('emiChart'); if(!canvas) return;
+            emiChart = new Chart(canvas.getContext('2d'), { type: 'doughnut', data: { labels: ['Principal', 'Interest'], datasets: [{ data: [70, 30], backgroundColor: ['#64748b', '#3b82f6'], borderWidth: 0 }] }, options: { cutout: '80%', maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { usePointStyle: true, font: { family: 'Outfit', size: 10 } } } } } });
+        }
+
+        function showToast(msg, type) {
+            const container = document.getElementById('toast-container');
+            const t = document.createElement('div');
+            t.className = `bg-white dark:bg-slate-800 px-6 py-4 rounded-xl shadow-2xl flex items-center gap-3 border-l-4 ${type === 'success' ? 'border-green-500' : 'border-blue-500'} animate-fade-up min-w-[280px] pointer-events-auto`;
+            t.innerHTML = `<i class="fas ${type === 'success' ? 'fa-check-circle text-green-500' : 'fa-info-circle text-blue-500'}"></i> <span class="font-bold text-slate-700 dark:text-slate-200 text-xs">${escapeHTML(msg)}</span>`;
+            container.appendChild(t); setTimeout(() => { t.style.opacity = '0'; setTimeout(() => t.remove(), 300); }, 4000);
+        }
+
+        function downloadBrochure() {
+            showToast("Downloading Brochure...", "info");
+            setTimeout(() => showToast("Download Complete!", "success"), 2000);
+        }
+
+        function shareProperty() {
+            if (navigator.share) {
+                navigator.share({
+                    title: document.getElementById('dm-title').textContent,
+                    text: 'Check out this luxury property on Luxe Living!',
+                    url: window.location.href,
+                }).then(() => showToast('Shared successfully!', 'success'))
+                .catch((error) => console.log('Error sharing', error));
+            } else {
+                // Fallback
+                navigator.clipboard.writeText(window.location.href);
+                showToast("Link copied to clipboard!", "success");
+            }
+        }
+        
+        function toggleChat() {
+            window.open('https://wa.me/0000000000', '_blank');
+        }
+
+        function formatPrice(p) { if (p >= 10000000) return `₹${(p/10000000).toFixed(2)} Cr`; if (p >= 100000) return `₹${(p/100000).toFixed(1)} L`; return `₹${p.toLocaleString('en-IN')}`; }
+        function closeMobileMenu() { document.getElementById('mobile-menu').classList.remove('active'); }
+        function toggleSavedDrawer() { document.getElementById('saved-drawer').classList.toggle('translate-x-full'); }
+        function handleSearch() { document.getElementById('discover').scrollIntoView({behavior:'smooth'}); renderGrid(); }
+        function resetApp() { state.filter = 'all'; state.search = ''; document.getElementById('search-input').value = ''; renderGrid(); }
+        function scrollToEmi() { document.getElementById('emi-section').scrollIntoView({behavior:'smooth'}); }
+        function toggleLayout() { const mapSec = document.getElementById('map-view'); mapSec.classList.toggle('lg:block'); document.getElementById('grid-container').classList.toggle('lg:w-3/5'); if(map) setTimeout(() => map.invalidateSize(), 400); }
+        function toggleVirtualTour() { document.getElementById('virtual-tour-overlay').classList.toggle('hidden'); }
+        function openLeadModal(type) { document.getElementById('lead-type').value = type; openModal('lead-modal'); }
+        function handleLead(e) { e.preventDefault(); showToast('Request Received!', 'success'); closeModal('lead-modal'); e.target.reset(); }
+        function toggleAdmin() { document.getElementById('admin-dashboard').classList.toggle('hidden'); }
+
+        // WhatsApp Button visibility logic
+        function setupWhatsAppObserver() {
+            const footer = document.getElementById('main-footer');
+            const chatBtn = document.getElementById('whatsapp-float');
+            if(!footer || !chatBtn) return;
+
+            const observer = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        chatBtn.style.opacity = '0';
+                        chatBtn.style.pointerEvents = 'none';
+                        chatBtn.style.transform = 'translateY(20px)';
+                    } else {
+                        chatBtn.style.opacity = '1';
+                        chatBtn.style.pointerEvents = 'auto';
+                        chatBtn.style.transform = 'translateY(0)';
+                    }
+                });
+            }, { threshold: 0.1 });
+
+            observer.observe(footer);
+        }
+
+        window.addEventListener('DOMContentLoaded', () => {
+            init();
+            setupWhatsAppObserver();
+        });
+    </script>
+</body>
+</html>
