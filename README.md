@@ -33,8 +33,8 @@ A high-end, responsive landing page for real estate agencies and property develo
 ---
 
 ## 📸 Screenshots
-*(Coming Soon)*
-![EstateFlow Mockup](https://via.placeholder.com/1200x600?text=Real+Estate+Hero+Mockup)
+
+![EstateFlow Mockup](https://github.com/rajatsec/real-estate-landing/blob/master/src/assets/real%20estate.png)
 
 ---
 
